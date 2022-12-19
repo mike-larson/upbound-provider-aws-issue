@@ -1,0 +1,49 @@
+{{ $vpc_id := .Values.subnets.vpc_id }}
+{{ range $index, $namespace := .Values.general_namespaces }}
+{{ range $az_index, $cidr := $namespace.cidrs }}
+---
+apiVersion: networking.wag.tools/v1alpha1
+kind: XBCSubnet
+metadata:
+  name: {{ $namespace.name }}-subnet-{{ if eq $az_index 0 }}az1{{ else if eq $az_index 1 }}az2{{ else }}az3{{ end }}
+spec:
+  parameters:
+    name: {{ $namespace.name }}-subnet-{{ if eq $az_index 0 }}az1{{ else if eq $az_index 1 }}az2{{ else }}az3{{ end }}
+    vpcId: {{ $vpc_id }}
+    availability_zone: {{ if eq $az_index 0 }}eu-central-1a{{ else if eq $az_index 1 }}eu-central-1b{{ else }}eu-central-1c{{ end }}
+    az: {{ if eq $az_index 0 }}az1{{ else if eq $az_index 1 }}az2{{ else }}az3{{ end }}
+    cidr: {{ $cidr }}
+    bounded_context: {{ $namespace.name }}
+{{ end}}
+{{ end}}
+---
+apiVersion: networking.wag.tools/v1alpha1
+kind: XNatRouteTable
+metadata:
+  name: lambda-route-table-az1
+spec:
+  parameters:
+    name: lambda-route-table-az1
+    vpcId: {{ $vpc_id }}
+    natId: {{ .Values.subnets.nat_gw_az1_id }}
+---
+apiVersion: networking.wag.tools/v1alpha1
+kind: XNatRouteTable
+metadata:
+  name: lambda-route-table-az2
+spec:
+  parameters:
+    name: lambda-route-table-az2
+    vpcId: {{ $vpc_id }}
+    natId: {{ .Values.subnets.nat_gw_az2_id }}
+---
+apiVersion: networking.wag.tools/v1alpha1
+kind: XNatRouteTable
+metadata:
+  name: lambda-route-table-az3
+spec:
+  parameters:
+    name: lambda-route-table-az3
+    vpcId: {{ $vpc_id }}
+    natId: {{ .Values.subnets.nat_gw_az3_id }}
+---

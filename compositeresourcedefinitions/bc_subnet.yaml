@@ -1,0 +1,122 @@
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xbcsubnets.networking.wag.tools
+spec:
+  group: networking.wag.tools
+  names:
+    kind: XBCSubnet
+    plural: xbcsubnets
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              parameters:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  vpcId:
+                    type: string
+                  availability_zone:
+                    type: string
+                  az:
+                    type: string
+                  cidr:
+                    type: string
+                  bounded_context:
+                    type: string
+                required:
+                - name
+                - vpcId
+                - availability_zone
+                - az
+                - cidr
+                - bounded_context
+            required:
+            - parameters
+          status:
+            type: object
+            properties:
+              subnetId:
+                type: string
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: bcsubnets
+  labels:
+    crossplane.io/xrd: xbcsubnets.networking.wag.tools
+    provider: aws-provider
+spec:
+  compositeTypeRef:
+    apiVersion: networking.wag.tools/v1alpha1
+    kind: XBCSubnet
+  resources:
+  - name: subnet
+    base:
+      apiVersion: ec2.aws.upbound.io/v1beta1
+      kind: Subnet
+      metadata:
+        labels:
+          bounded_context: ""
+      spec:
+        providerConfigRef:
+          name: aws-provider
+        forProvider:
+          region: eu-central-1
+          tags:
+            Name: ""
+    patches:
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.parameters.availability_zone
+      toFieldPath: spec.forProvider.availabilityZone
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.parameters.cidr
+      toFieldPath: spec.forProvider.cidrBlock
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.parameters.name
+      toFieldPath: spec.forProvider.tags.Name
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.parameters.vpcId
+      toFieldPath: spec.forProvider.vpcId
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.parameters.name
+      toFieldPath: metadata.labels[routetable]
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.parameters.bounded_context
+      toFieldPath: metadata.labels[bounded_context]
+    - type: ToCompositeFieldPath
+      fromFieldPath: status.atProvider.id
+      toFieldPath: status.subnetId
+  - name: natroutetableassociation
+    base:
+      apiVersion: ec2.aws.upbound.io/v1beta1
+      kind: RouteTableAssociation
+      spec:
+        providerConfigRef:
+          name: aws-provider
+        forProvider:
+          region: eu-central-1
+          routeTableIdSelector:
+            matchLabels:
+              routetable: ""
+    patches:
+    - type: FromCompositeFieldPath
+      fromFieldPath: status.subnetId
+      toFieldPath: spec.forProvider.subnetId
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.parameters.az
+      toFieldPath: spec.forProvider.routeTableIdSelector.matchLabels.routetable
+      transforms:
+      - type: string
+        string:
+          fmt: "lambda-route-table-%s"
