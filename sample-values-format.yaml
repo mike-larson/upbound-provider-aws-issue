@@ -1,0 +1,13 @@
+subnets:
+   vpc_id: vpc-abcdefg
+   nat_gw_az1_id: nat-abcdefg1
+   nat_gw_az2_id: nat-abcdefg2
+   nat_gw_az3_id: nat-abcdefg3
+   
+general_namespaces:
+  - name: sample1
+    cidrs:
+      - 0.0.0.0/24
+  - name: sample2
+    cidrs:
+      - 0.0.0.1/24
